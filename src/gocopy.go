@@ -24,7 +24,7 @@ func init() {
 func main() {
 	flag.Parse()
 
-	dst, src, err := fromToHandler()
+	dst, src, err := getSource()
 	defer closeSource([]*os.File{dst, src})
 
 	if err != nil {
@@ -32,28 +32,46 @@ func main() {
 		return
 	}
 
-	buf, length, err := makeBuf(dst)
+	copySource(dst, src)
+}
 
-	if err != nil {
+func copySource(dst, src *os.File) {
+	buf, err := read(dst)
+
+	if err == nil {
+		_, err = src.Write(buf)
+	} else {
 		fmt.Println(err)
+	}
+}
+
+func read(dst *os.File) ([]byte, error) {
+	buf, length, readErr := makeBuf(dst)
+
+	if readErr != nil {
+		return nil, readErr
 	}
 
 	offset := args.offsetArg
 
 	for offset < length {
 		read, err := dst.Read(buf[offset:])
-		if err == io.EOF {
+
+		if err != nil {
+			if err != io.EOF {
+				readErr = err
+			}
 			break
 		}
 
 		offset += int64(read)
 	}
 
-	_, err = src.Write(buf)
+	return buf, readErr
+}
 
-	if err != nil {
-		fmt.Println(err)
-	}
+func progres(length int64, readed int)  {
+	fmt.Println(length / int64(readed) * 100)
 }
 
 func makeBuf(dst *os.File) ([]byte, int64, error) {
@@ -71,11 +89,11 @@ func calcBufSize(file os.File) (int64, error) {
 	if args.limit > 0 {
 		return int64(args.limit), nil
 	} else {
-		return fileSize(file)
+		return getFileSize(file)
 	}
 }
 
-func fileSize(file os.File) (int64, error) {
+func getFileSize(file os.File) (int64, error) {
 	stat, err := file.Stat()
 
 	if err != nil {
@@ -85,7 +103,7 @@ func fileSize(file os.File) (int64, error) {
 	}
 }
 
-func fromToHandler() (dst, src *os.File, err error) {
+func getSource() (dst, src *os.File, err error) {
 	dst, err = os.Open(args.from)
 
 	if err != nil {
