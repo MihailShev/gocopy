@@ -27,51 +27,60 @@ func main() {
 	dst, src, err := getSource()
 	defer closeSource([]*os.File{dst, src})
 
+	if err == nil {
+		err = copySource(dst, src)
+	}
+
 	if err != nil {
 		fmt.Println(err)
-		return
-	}
-
-	copySource(dst, src)
-}
-
-func copySource(dst, src *os.File) {
-	buf, err := read(dst)
-
-	if err == nil {
-		_, err = src.Write(buf)
-	} else {
-		fmt.Println(err)
 	}
 }
 
-func read(dst *os.File) ([]byte, error) {
-	buf, length, readErr := makeBuf(dst)
+func copySource(dst, src *os.File) error {
+	buf, length, copyErr := makeBuf(dst)
 
-	if readErr != nil {
-		return nil, readErr
+	if copyErr != nil {
+		return copyErr
 	}
 
 	offset := args.offsetArg
 
+	if offset > length {
+		fmt.Println("Offset is more then the file size or limit, 0 bytes copied")
+	} else {
+		printProgress(offset, 0)
+	}
+
 	for offset < length {
 		read, err := dst.Read(buf[offset:])
 
+		if err == nil {
+			_, err = src.Write(buf[offset : int64(read)+offset])
+			offset += int64(read)
+			printProgress(length, offset)
+		}
+
 		if err != nil {
 			if err != io.EOF {
-				readErr = err
+				copyErr = err
 			}
 			break
 		}
-
-		offset += int64(read)
 	}
 
-	return buf, readErr
+	return copyErr
 }
 
-func progres(length int64, readed int)  {
-	fmt.Println(length / int64(readed) * 100)
+func printProgress(length, read int64) {
+	var result float64
+
+	if read == 0 {
+		result = 0
+	} else {
+		result = float64(read) / float64(length) * 100
+	}
+
+	fmt.Printf("%s%6.2f%s", "progress:\t", result, "%\n")
 }
 
 func makeBuf(dst *os.File) ([]byte, int64, error) {
