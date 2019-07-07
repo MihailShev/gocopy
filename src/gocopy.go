@@ -2,9 +2,12 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"io"
 	"os"
+)
+
+import (
+	"fmt"
 )
 
 var args = struct {
@@ -14,6 +17,7 @@ var args = struct {
 	limit     uint
 }{}
 
+//nolint
 func init() {
 	flag.StringVar(&args.from, "from", "", "file to read from")
 	flag.StringVar(&args.to, "to", "", "file to write")
@@ -23,7 +27,6 @@ func init() {
 
 func main() {
 	flag.Parse()
-
 	dst, src, err := getSource()
 	defer closeSource([]*os.File{dst, src})
 
@@ -83,33 +86,35 @@ func printProgress(length, read int64) {
 	fmt.Printf("%s%6.2f%s", "progress:\t", result, "%\n")
 }
 
-func makeBuf(dst *os.File) ([]byte, int64, error) {
-	size, err := calcBufSize(*dst)
+func makeBuf(dst *os.File) (buf []byte, size int64, err error) {
+	size, err = calcBufSize(dst)
 
 	if err != nil {
-		return nil, 0, err
+		return nil, size, err
 	}
 
 	return make([]byte, size), size, err
 }
 
-func calcBufSize(file os.File) (int64, error) {
+func calcBufSize(file *os.File) (int64, error) {
+	fileSize, err := getFileSize(file)
+	limit := int64(args.limit)
 
-	if args.limit > 0 {
-		return int64(args.limit), nil
-	} else {
-		return getFileSize(file)
+	if limit > 0 && limit <= fileSize && err == nil {
+		return limit, nil
 	}
+
+	return fileSize, err
 }
 
-func getFileSize(file os.File) (int64, error) {
+func getFileSize(file *os.File) (int64, error) {
 	stat, err := file.Stat()
 
 	if err != nil {
 		return 0, err
-	} else {
-		return stat.Size(), nil
 	}
+	return stat.Size(), nil
+
 }
 
 func getSource() (dst, src *os.File, err error) {
