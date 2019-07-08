@@ -1,9 +1,13 @@
-default: install
+default: dev
 
-install:
-	go install ./src/gocopy.go
-.PHONY: install
+dev:
+	go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
+.PHONY: dev
 
 test:
-	go test -v ./src
+	go test -v ./cmd/gocopy
 .PHONY: test
+
+lint:
+	golangci-lint run
+.PHONY: lint

@@ -17,7 +17,6 @@ var args = struct {
 	limit     uint
 }{}
 
-//nolint
 func init() {
 	flag.StringVar(&args.from, "from", "", "file to read from")
 	flag.StringVar(&args.to, "to", "", "file to write")
